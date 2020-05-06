@@ -10,6 +10,5 @@ namespace DFSServer
     {
         public Socket Client { get; set; }
         public Request Request { get; set; }
-        public Response Response;
     }
 }

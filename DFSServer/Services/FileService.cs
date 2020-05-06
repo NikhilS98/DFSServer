@@ -7,10 +7,11 @@ namespace DFSServer.Services
 {
     public class FileService
     {
-        public static byte[] OpenFile(string path)
+        public static string OpenFile(string path)
         {
             string text = File.ReadAllText(path);
-            return Encoding.UTF8.GetBytes(text);
+            return text;
         }
+
     }
 }

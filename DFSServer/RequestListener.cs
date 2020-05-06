@@ -53,28 +53,31 @@ namespace DFSServer
                 List<byte> bytesList = new List<byte>();
                 int size = 100;
 
-                byte[] buffer = new byte[size];
-                int bytesTransferred = 0;
-                do
+                try
                 {
-                    //Add in try catch. if client disconnects remove from list
-                    bytesTransferred = client.Receive(buffer);
-                    for(int i = 0; i < bytesTransferred; i++)
+                    byte[] buffer = new byte[size];
+                    int bytesTransferred = 0;
+                    do
                     {
-                        bytesList.Add(buffer[i]);
+                        bytesTransferred = client.Receive(buffer);
+                        for (int i = 0; i < bytesTransferred; i++)
+                        {
+                            bytesList.Add(buffer[i]);
+                        }
+
                     }
+                    while (bytesTransferred == size);
+
+                    var request = bytesList.ToArray().Deserialize<Request>();
+
+                    AddRequestInQueue(client, request);
                 }
-                while (bytesTransferred == size);
-
-                var request = bytesList.ToArray().Deserialize<Request>();
-
-                AddRequestInQueue(client, request);
-
-                Console.WriteLine(request);
-
-                string msg = "Received";
-                byte[] msgBytes = Encoding.UTF8.GetBytes(msg);
-                client.Send(msgBytes);
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                    ClientList.Remove(client.RemoteEndPoint);
+                    break;
+                }
             }
         }
 

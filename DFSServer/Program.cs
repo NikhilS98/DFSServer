@@ -3,6 +3,8 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Linq;
 using DFSUtility;
+using System.Collections.Generic;
+using DFSServer.Services;
 
 namespace DFSServer
 {
@@ -43,16 +45,22 @@ namespace DFSServer
 
                     Response response = new Response()
                     {
-                        RequestId = request.Request.Id
+                        Request = request.Request
                     };
 
-                    if (met.ReturnType.IsArray)
-                    {
-                        response.Data = (byte[])value;
-                        response.Message = request.Request.Message;
-                    }
+                    response.Data = (string)value;
 
-                    request.Client.Send(response.SerializeToByteArray());
+                    byte[] buffer = response.SerializeToByteArray();
+
+                    Console.WriteLine($"size of response: {buffer.Length}");
+                    int bytesSent = 0, totalBytesSent = 0;
+                    do
+                    {
+                        bytesSent = request.Client.Send(buffer);
+                        totalBytesSent += bytesSent;
+                        Console.WriteLine($"total bytes sent till now: { totalBytesSent }, iteration: {bytesSent}");
+                    }
+                    while (totalBytesSent < buffer.Length);
                 }
 
 

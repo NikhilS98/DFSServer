@@ -20,10 +20,10 @@ namespace DFSServer
             return false;
         }
 
-        public static Socket Remove(EndPoint endPoint)
+        public static Socket Remove(EndPoint remoteEndPoint)
         {
             Socket socket;
-            clients.TryRemove(endPoint, out socket);
+            clients.TryRemove(remoteEndPoint, out socket);
             return socket;
         }
 
