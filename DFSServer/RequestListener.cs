@@ -40,7 +40,7 @@ namespace DFSServer
         public void Accept()
         {
             Socket client = listener.Accept();
-            client.Send(Encoding.UTF8.GetBytes("Connected"));
+            client.Send(Encoding.UTF8.GetBytes("root/"));
             ClientList.Add(client);
             Task.Run(() => ListenRequest(client));
         }

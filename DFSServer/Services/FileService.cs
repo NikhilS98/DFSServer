@@ -5,7 +5,7 @@ using System.Text;
 
 namespace DFSServer.Services
 {
-    public class FileService
+    public static class FileService
     {
         public static string OpenFile(string path)
         {
