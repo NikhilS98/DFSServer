@@ -5,36 +5,37 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-namespace DFSServer
+namespace DFSServer.Connections
 {
-    public static class ClientList
+    public static class ServerList
     {
-        private static ConcurrentDictionary<EndPoint, Socket> clients = 
+        private static ConcurrentDictionary<EndPoint, Socket> servers =
             new ConcurrentDictionary<EndPoint, Socket>();
         public static int Capacity { get; set; } = 10;
 
         public static bool Add(Socket client)
         {
-            if(HasSpace())
-                return clients.TryAdd(client.RemoteEndPoint, client);
+            if (HasSpace())
+                return servers.TryAdd(client.RemoteEndPoint, client);
             return false;
         }
 
         public static Socket Remove(EndPoint remoteEndPoint)
         {
             Socket socket;
-            clients.TryRemove(remoteEndPoint, out socket);
+            servers.TryRemove(remoteEndPoint, out socket);
             return socket;
         }
 
         public static int GetCount()
         {
-            return clients.Count;
+            return servers.Count;
         }
 
         public static bool HasSpace()
         {
             return GetCount() < Capacity;
         }
+
     }
 }

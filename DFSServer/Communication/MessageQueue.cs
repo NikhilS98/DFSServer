@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace DFSServer
+namespace DFSServer.Communication
 {
     public static class MessageQueue
     {
