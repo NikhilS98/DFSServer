@@ -10,7 +10,8 @@ namespace DFSServer
     public static class FileTree
     {
         private static readonly object updateLock = new object();
-        private static DirectoryNode RootDirectory = new DirectoryNode("");
+        private static DirectoryNode RootDirectory = new DirectoryNode("root");
+        public static int Id = 0;
 
         public static DirectoryNode GetRootDirectory()
         {
@@ -34,16 +35,16 @@ namespace DFSServer
 
         public static DirectoryNode GetDirectory(string path)
         {
-            string[] tokens = path.Split("/");
+            string[] tokens = path.Split("\\");
             DirectoryNode directory = RootDirectory;
-            if (!directory.Name.Equals(tokens[0]))
+            if (tokens.Length == 1 && !directory.Name.Equals(tokens[0]))
+                return null;
+            for (int i = 1; i < tokens.Length; i++)
             {
-                for (int i = 0; i < tokens.Length; i++)
-                {
-                    directory = directory.Directories.FirstOrDefault(x => x.Name.Equals(tokens[i]));
-                    if (directory == null)
-                        return null;
-                }
+                directory = directory.Directories.FirstOrDefault(x => x.Name.Equals(tokens[i]));
+                if (directory == null)
+                    return null;
+
             }
             return directory;
         }
@@ -56,6 +57,12 @@ namespace DFSServer
         public static bool RemoveDirectory(DirectoryNode parent, DirectoryNode child)
         {
             return parent.Directories.Remove(child);
+        }
+
+        public static string GetNewImplicitName()
+        {
+            //some checking or something
+            return (Id++) + "";
         }
     }
 }

@@ -20,22 +20,19 @@ namespace DFSServer.Communication
 
         public RequestListener()
         {
-            // Get Host IP Address that is used to establish a connection  
-            // In this case, we get one IP address of localhost that is IP : 127.0.0.1  
-            // If a host has multiple addresses, you will get a list of addresses  
-            host = Dns.GetHostEntry("localhost");
-            ipAddress = host.AddressList[0];
+            ipAddress = IPAddress.Parse("192.168.0.105");
             int port = 11000;
             while (IsPortOccupied(port))
                 port++;
             localEndPoint = new IPEndPoint(ipAddress, port);
 
-            State.LocalEndPoint = localEndPoint;
-
             // Create a Socket that will use Tcp protocol      
             listener = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            // A Socket must be associated with an endpoint using the Bind method  
+            // A Socket must be associated with an endpoint using the Bind method
             listener.Bind(localEndPoint);
+
+            State.LocalEndPoint = localEndPoint;
+            State.Listener = listener;
 
             Console.WriteLine($"Running on {localEndPoint}");
 
@@ -61,25 +58,10 @@ namespace DFSServer.Communication
             while (true)
             {
                 Console.WriteLine("Listening on client " + client.RemoteEndPoint);
-                List<byte> bytesList = new List<byte>();
-                int size = 100;
-
                 try
                 {
-                    byte[] buffer = new byte[size];
-                    int bytesTransferred = 0;
-                    do
-                    {
-                        bytesTransferred = client.Receive(buffer);
-                        for (int i = 0; i < bytesTransferred; i++)
-                        {
-                            bytesList.Add(buffer[i]);
-                        }
-
-                    }
-                    while (bytesTransferred == size);
-
-                    var request = bytesList.ToArray().Deserialize<Request>();
+                    var bytes = Network.ReceiveResponse(client, 100000);
+                    var request = bytes.Deserialize<Request>();
 
                     AddRequestInQueue(client, request);
                 }

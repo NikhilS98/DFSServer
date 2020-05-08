@@ -10,6 +10,8 @@ namespace DFSServer.Services
 {
     public static class FileService
     {
+
+        //working for relative and absolute
         public static Response OpenFile(string path)
         {
             var response = ResponseFormation.GetResponse();
@@ -19,15 +21,15 @@ namespace DFSServer.Services
 
             var directory = FileTree.GetDirectory(dirPath);
             if (directory == null)
-                response.Message = "Directory does not exist";
+                response.Message = string.Format(ResponseMessages.DirectoryNotFound, dirPath);
             else
             {
                 var file = FileTree.GetFile(directory, filename);
                 if (file == null)
-                    return CreateFile(path);
+                    return CreateFile(directory, filename);
                 else if (file.IPEndPointString.Exists(x => x.Equals(State.LocalEndPoint.ToString())))
                 {
-                    string text = File.ReadAllText(Path.Combine(State.GetRootDirectory().FullName, path));
+                    string text = File.ReadAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName));
                     response.IsSuccess = true;
                     response.Data = text;
                 }
@@ -41,38 +43,26 @@ namespace DFSServer.Services
             return response;
         }
 
-        public static Response CreateFile(string path)
+        //working for relative and absolute
+        private static Response CreateFile(DirectoryNode directory, string filename)
         {
             var response = ResponseFormation.GetResponse();
 
-            string dirPath = PathHelpers.GetDirFromPath(path);
-            string filename = PathHelpers.GetFilenameFromPath(path);
+            // evaluate where to create it
 
-            var directory = FileTree.GetDirectory(dirPath);
-            if (directory == null)
-                response.Message = "Directory does not exist";
-            else
-            {
-                FileNode file = FileTree.GetFile(directory, filename);
-                if (file != null)
-                    response.Message = "File already exists";
-                else
-                {
-                    // evaluate where to create it
+            //if create locally
+            FileNode file = new FileNode(filename, FileTree.GetNewImplicitName());
+            File.WriteAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName), "");
+            file.IPEndPointString.Add(State.LocalEndPoint.ToString());
+            FileTree.AddFile(directory, file);
 
-                    //if create locally
-                    File.WriteAllText(path, "");
-                    file = new FileNode(filename);
-                    file.IPEndPointString.Add(State.LocalEndPoint.ToString());
-                    FileTree.AddFile(directory, file);
-
-                    response.IsSuccess = true;
-                    response.Message = "Successfully Created";
-                }
-            }
+            response.IsSuccess = true;
+            response.Message = "Successfully Created";
+                
             return response;
         }
 
+        //working for relative and absolute
         public static Response RemoveFile(string path)
         {
             var response = ResponseFormation.GetResponse();
@@ -82,15 +72,15 @@ namespace DFSServer.Services
 
             var directory = FileTree.GetDirectory(dirPath);
             if (directory == null)
-                response.Message = "Directory does not exist";
+                response.Message = string.Format(ResponseMessages.DirectoryNotFound, dirPath);
             else
             {
                 var file = FileTree.GetFile(directory, filename);
                 if (file == null)
-                    response.Message = "File does not exist";
-                else if (file.IPEndPointString.Equals(State.LocalEndPoint.ToString()))
+                    response.Message = string.Format(ResponseMessages.FileNotFound, filename, dirPath);
+                else if (file.IPEndPointString.Exists(x => x.Equals(State.LocalEndPoint.ToString())))
                 {
-                    File.Delete(Path.Combine(State.GetRootDirectory().FullName, path));
+                    RemoveFileFromDisk(file.ImplicitName);
                     FileTree.RemoveFile(directory, file);
                     response.IsSuccess = true;
                     response.Message = "Succesfully Deleted";
@@ -105,8 +95,11 @@ namespace DFSServer.Services
             return response;
         }
 
-        public static string MoveFile(string curPath, string newPath)
+        //working for relative and absolute
+        public static Response MoveFile(string curPath, string newPath)
         {
+            var response = ResponseFormation.GetResponse();
+
             string curDirPath = PathHelpers.GetDirFromPath(curPath);
             string curFilename = PathHelpers.GetFilenameFromPath(curPath);
 
@@ -115,24 +108,66 @@ namespace DFSServer.Services
 
             var curDir = FileTree.GetDirectory(curDirPath);
             if (curDir == null)
-                return "Directory 1 does not exist";
-
-            var newDir = FileTree.GetDirectory(newDirPath);
-            if (newDir == null)
-                return "Directory 2 does not exist";
-
-            var curFile = FileTree.GetFile(curDir, curFilename);
-            if (curFile == null)
-                return "File 1 does not exist";
-
-            if(FileTree.RemoveFile(curDir, curFile))
+                 response.Message = string.Format(ResponseMessages.DirectoryNotFound, curDirPath);
+            else
             {
-                curFile.Name = newFilename;
-                FileTree.AddFile(curDir, curFile);
-                return "Successfully moved";
+                var file = FileTree.GetFile(curDir, curFilename);
+                if (file == null)
+                    response.Message = string.Format(ResponseMessages.FileNotFound, curFilename, curDirPath);
+                else
+                {
+                    var newDir = FileTree.GetDirectory(newDirPath);
+                    if (newDir == null)
+                        response.Message = string.Format(ResponseMessages.DirectoryNotFound, newDirPath);
+                    else
+                    {
+                        FileTree.RemoveFile(curDir, file);
+                        FileTree.AddFile(newDir, file);
+                        file.Name = newFilename;
+                        response.IsSuccess = true;
+                        response.Message = "Successfully Moved";
+                    }
+                }
             }
 
-            return "File could not be moved";
+            return response;
+        }
+
+        //working for relative and absolute
+        public static Response UpdateFile(string path, string data)
+        {
+            var response = ResponseFormation.GetResponse();
+
+            string dirPath = PathHelpers.GetDirFromPath(path);
+            string filename = PathHelpers.GetFilenameFromPath(path);
+
+            var directory = FileTree.GetDirectory(dirPath);
+            if (directory == null)
+                response.Message = string.Format(ResponseMessages.DirectoryNotFound, dirPath);
+            else
+            {
+                var file = FileTree.GetFile(directory, filename);
+                if (file == null)
+                    response.Message = string.Format(ResponseMessages.FileNotFound, filename, dirPath);
+                else if (file.IPEndPointString.Exists(x => x.Equals(State.LocalEndPoint.ToString())))
+                {
+                    File.WriteAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName), data);
+                    response.IsSuccess = true;
+                    response.Message = "Successfully updated";
+                }
+                else
+                {
+                    // send request to remote server
+                    response.Message = "Forwarded";
+                    response.IsSuccess = true;
+                }
+            }
+            return response;
+        }
+
+        public static void RemoveFileFromDisk(string implicitName)
+        {
+            File.Delete(Path.Combine(State.GetRootDirectory().FullName, implicitName));
         }
     }
 }

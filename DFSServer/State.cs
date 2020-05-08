@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 
 namespace DFSServer
@@ -11,6 +12,8 @@ namespace DFSServer
         private static DirectoryInfo rootDirectory;
         public static IPEndPoint LocalEndPoint { get; set; }
         public static int LocalTotalSpace { get; set; }
+        public static Socket Listener { get; set; }
+        public static int GlobalTotalSpace {get;set;}
 
         private static int localOccupiedSpace;
         private static readonly object updateSpaceLock = new object();

@@ -2,12 +2,14 @@
 using DFSUtility;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace DFSServer.Services
 {
     public static class DirectoryService
     {
+        //working for relative and absolute
         public static Response OpenDirectory(string path)
         {
             var response = ResponseFormation.GetResponse();
@@ -24,6 +26,7 @@ namespace DFSServer.Services
             return response;
         }
 
+        //working for relative and absolute
         public static Response CreateDirectory(string path)
         {
             var response = ResponseFormation.GetResponse();
@@ -51,6 +54,7 @@ namespace DFSServer.Services
             return response;
         }
 
+        //working for relative and absolute
         public static Response RemoveDirectory(string path)
         {
             var response = ResponseFormation.GetResponse();
@@ -62,32 +66,45 @@ namespace DFSServer.Services
             {
                 DirectoryNode parent = FileTree.GetDirectory(PathHelpers.GetDirFromPath(path));
                 FileTree.RemoveDirectory(parent, directory);
+
+                //if local delete files from disk
+                RemoveFilesByDirectory(directory);
                 response.IsSuccess = true;
                 response.Message = "Directory removed successfully";
+
+                //else forward
             }
 
             return response;
         }
 
-        /*public static Response MoveDirectory(string curPath, string newPath)
+        //working for relative and absolute
+        public static Response MoveDirectory(string curPath, string newPath)
         {
             var response = ResponseFormation.GetResponse();
 
-            var directory = FileTree.GetDirectory(path);
+            var directory = FileTree.GetDirectory(curPath);
             if (directory == null)
-                response.Message = "Directory does not exist";
+                response.Message = $"Directory {curPath} does not exist";
             else
             {
-                DirectoryNode parent = FileTree.GetDirectory(PathHelpers.GetDirFromPath(path));
-                FileTree.RemoveDirectory(parent, directory);
+                DirectoryNode newParent = FileTree.GetDirectory(newPath);
+                if (newParent == null)
+                    response.Message = $"Directory {newPath} does not exist";
+                else {
+                    DirectoryNode curParent = FileTree.GetDirectory(PathHelpers.GetDirFromPath(curPath));
+                    FileTree.RemoveDirectory(curParent, directory);
+                    FileTree.AddDirectory(newParent, directory);
 
-                response.IsSuccess = true;
-                response.Message = "Directory created successfully";
+                    response.IsSuccess = true;
+                    response.Message = "Directory moved successfully";
+                }
             }
 
             return response;
-        }*/
+        }
 
+        //working for relative and absolute
         public static Response ListContent(string path)
         {
             var response = ResponseFormation.GetResponse();
@@ -112,6 +129,18 @@ namespace DFSServer.Services
             }
 
             return response;
+        }
+
+        public static void RemoveFilesByDirectory(DirectoryNode directory)
+        {
+            foreach (var file in directory.Files)
+            {
+                FileService.RemoveFileFromDisk(file.ImplicitName);
+            }
+            foreach (var dir in directory.Directories)
+            {
+                RemoveFilesByDirectory(dir);
+            }
         }
     }
 }

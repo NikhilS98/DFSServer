@@ -37,5 +37,24 @@ namespace DFSServer.Connections
             return GetCount() < Capacity;
         }
 
+        public static ConcurrentDictionary<EndPoint, Socket> GetServerDictionary()
+        {
+            return servers;
+        }
+
+        public static List<Socket> GetServers()
+        {
+            List<Socket> sockets = null;
+            if (GetCount() > 0)
+            {
+                sockets = new List<Socket>();
+                foreach (var item in servers)
+                {
+                    sockets.Add(item.Value);
+                }
+            }
+            return sockets;
+        }
+
     }
 }
