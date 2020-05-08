@@ -13,6 +13,11 @@ namespace DFSServer
         private static DirectoryNode RootDirectory = new DirectoryNode("root");
         public static int Id = 0;
 
+        public static void SetRootDirectory(DirectoryNode directoryNode)
+        {
+            RootDirectory = directoryNode;
+        }
+
         public static DirectoryNode GetRootDirectory()
         {
             return RootDirectory;
@@ -64,5 +69,7 @@ namespace DFSServer
             //some checking or something
             return (Id++) + "";
         }
+
+      
     }
 }

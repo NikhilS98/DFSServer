@@ -9,6 +9,7 @@ using System.Text;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using DFSServer.Communication;
 
 namespace DFSServer.Services
 {
@@ -84,18 +85,18 @@ namespace DFSServer.Services
                 return ips.ToList();
             }
 
-            return null;
-                
+            return null;             
         }
 
         private static void ListenServer(Socket server)
         {
             while (true)
             {
-                var bytes = Network.ReceiveResponse(server, 1000000);
+                var bytes = Network.ReceiveResponse(server, 100000);
 
                 //What to do with this lets see
                 var response = bytes.Deserialize<Response>();
+                ResponseParser.Parse(response);
             }
         }
     }

@@ -30,7 +30,13 @@ namespace DFSServer.Communication
                     else if(request.Request.Command == Command.requestFileTree)
                     {
                         var rootDirNode = FileTree.GetRootDirectory();
-                        buffer = rootDirNode.SerializeToByteArray();
+                        var response = new Response
+                        {
+                            Bytes = rootDirNode.SerializeToByteArray(),
+                            IsSuccess = true,
+                            Request = request.Request,
+                        };
+                        buffer = response.SerializeToByteArray();
                     }
                     else
                     {
@@ -51,14 +57,7 @@ namespace DFSServer.Communication
 
                     //Thread.Sleep(2000);
                     //Console.WriteLine($"size of response: {buffer.Length}");
-                    int bytesSent = 0, totalBytesSent = 0;
-                    do
-                    {
-                        bytesSent = request.Client.Send(buffer);
-                        totalBytesSent += bytesSent;
-                        //Console.WriteLine($"total bytes sent till now: { totalBytesSent }, iteration: {bytesSent}");
-                    }
-                    while (totalBytesSent < buffer.Length);
+                    Network.SendRequest(request.Client, buffer);
                 }
             }
         }
