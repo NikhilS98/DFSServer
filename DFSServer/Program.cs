@@ -8,7 +8,6 @@ using DFSServer.Communication;
 using System.IO;
 using DFSServer.Connections;
 using DFSServer.Helpers;
-using DFSServer.Services;
 
 namespace DFSServer
 {
@@ -16,16 +15,18 @@ namespace DFSServer
     {
         static void Main(string[] args)
         {
-            Console.Write("Select a root directory: ");
-            string rootDir = Console.ReadLine();
-            //string rootDir = "D:\\server1";
+            //Console.Write("Select a root directory: ");
+            //string rootDir = Console.ReadLine();
+            string rootDir = "D:\\server";
             State.SetRootDirectory(rootDir);
 
             RequestListener listener = new RequestListener();
             listener.Listen(100);
 
-            File.WriteAllText(rootDir + "\\config.txt", "192.168.0.105:11000\n");
-            CommonFilePaths.ConfigFile = rootDir + "\\config.txt";
+            //File.WriteAllText(rootDir + "\\config.txt", "192.168.0.105:11000\n");
+            //CommonFilePaths.ConfigFile = rootDir + "\\config.txt";
+
+            FileTree.ReadFromFile();
 
             var ips = File.ReadAllLines(CommonFilePaths.ConfigFile);
             var ip = ips.FirstOrDefault(x => !x.Equals(State.LocalEndPoint.ToString()));

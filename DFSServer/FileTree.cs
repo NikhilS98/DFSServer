@@ -6,23 +6,43 @@ using System.Text;
 using System.Linq;
 using DFSServer.Connections;
 using System.IO;
+using DFSServer.Helpers;
+using DFSUtility;
 
 namespace DFSServer
 {
     public static class FileTree
     {
-        private static readonly object updateLock = new object();
+        private static readonly object updateRootDirLock = new object();
         private static DirectoryNode RootDirectory = new DirectoryNode("root");
-        public static int Id = 0;
+        private static List<FileNode> localFiles = new List<FileNode>();
+        private static readonly object updatelocalFilesLock = new object();
 
         public static void SetRootDirectory(DirectoryNode directoryNode)
         {
             RootDirectory = directoryNode;
+            WriteToFile();
         }
 
         public static DirectoryNode GetRootDirectory()
         {
             return RootDirectory;
+        }
+
+        public static void AddInLocalFiles(FileNode node)
+        {
+            lock (updatelocalFilesLock)
+            {
+                localFiles.Add(node);
+            }
+        }
+
+        public static void RemoveFromLocalFiles(FileNode node)
+        {
+            lock (updatelocalFilesLock)
+            {
+                localFiles.Remove(node);
+            }
         }
 
         public static FileNode GetFile(DirectoryNode directory, string filename)
@@ -32,12 +52,16 @@ namespace DFSServer
 
         public static bool RemoveFile(DirectoryNode directory, FileNode file)
         {
-            return directory.Files.Remove(file);
+            bool result = directory.Files.Remove(file);
+            if (result)
+                WriteToFile();
+            return result;
         }
 
         public static void AddFile(DirectoryNode directory, FileNode file)
         {
             directory.Files.Add(file);
+            WriteToFile();
         }
 
         public static DirectoryNode GetDirectory(string path)
@@ -59,11 +83,15 @@ namespace DFSServer
         public static void AddDirectory(DirectoryNode parentDir, DirectoryNode childDir)
         {
             parentDir.Directories.Add(childDir);
+            WriteToFile();
         }
 
         public static bool RemoveDirectory(DirectoryNode parent, DirectoryNode child)
         {
-            return parent.Directories.Remove(child);
+            bool result = parent.Directories.Remove(child);
+            if (result)
+                WriteToFile();
+            return result;
         }
 
         public static string GetNewImplicitName()
@@ -92,6 +120,8 @@ namespace DFSServer
             if (ipPorts.Count == 0)
                 return ipSpaces;
 
+            ipPorts.Add(State.LocalEndPoint.ToString());
+
             while(directoryNodes.Count > 0)
             {
                 var dirNode = directoryNodes.Dequeue();
@@ -117,6 +147,26 @@ namespace DFSServer
             }
 
             return ipSpaces;
+        }
+
+        public static void WriteToFile()
+        {
+            File.WriteAllBytes(Path.Combine(State.GetRootDirectory().FullName, CommonFilePaths.RootNodeDirFile),
+                    GetRootDirectory().SerializeToByteArray());
+        }
+
+        public static void ReadFromFile()
+        {
+            try
+            {
+                var buff = File.ReadAllBytes(Path.Combine(State.GetRootDirectory().FullName, 
+                    CommonFilePaths.RootNodeDirFile));
+                RootDirectory = buff.Deserialize<DirectoryNode>();
+            }
+            catch(Exception e)
+            {
+
+            }
         }
     }
 }

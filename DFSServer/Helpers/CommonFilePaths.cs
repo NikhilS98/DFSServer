@@ -8,6 +8,7 @@ namespace DFSServer.Helpers
     public static class CommonFilePaths
     {
         //public static string ConfigFile { get { return @"C:\Users\Nikhil\source\repos\DFSServer\DFSServer\config.txt"; } }
-        public static string ConfigFile { get; set; }
+        public static string ConfigFile { get; set; } = "D:\\server\\config.txt";
+        public static string RootNodeDirFile { get; set; } = "rootDirNode";
     }
 }

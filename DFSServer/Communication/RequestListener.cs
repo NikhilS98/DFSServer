@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using DFSUtility;
 using System.Linq;
 using DFSServer.Connections;
-using DFSServer.Services;
+using DFSServer.Communication;
 
 namespace DFSServer.Communication
 {

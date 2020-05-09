@@ -9,7 +9,7 @@ using DFSServer.Connections;
 using System.Net;
 using System.Net.Sockets;
 
-namespace DFSServer.Services
+namespace DFSServer.Communication
 {
     public static class FileService
     {
@@ -29,7 +29,7 @@ namespace DFSServer.Services
             {
                 var file = FileTree.GetFile(directory, filename);
                 if (file == null)
-                    return CreateFile(directory, filename);
+                    return CreateFile(directory, filename, false);
                 else if (file.IPAddresses.Exists(x => x.Equals(State.LocalEndPoint.ToString())))
                 {
                     string text = File.ReadAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName));
@@ -64,7 +64,8 @@ namespace DFSServer.Services
         }
 
         //working for relative and absolute
-        private static Response CreateFile(DirectoryNode directory, string filename)
+        private static Response CreateFile(DirectoryNode directory, string filename, 
+            bool createLocally)
         {
             var response = ResponseFormation.GetResponse();
 
@@ -76,7 +77,7 @@ namespace DFSServer.Services
             else
                 ipPort = ipSpacePairs.OrderBy(x => x.Value).First().Key;
 
-            if (State.LocalEndPoint.ToString().Equals(ipPort))
+            if (createLocally || State.LocalEndPoint.ToString().Equals(ipPort))
             {
                 FileNode file = new FileNode(filename, FileTree.GetNewImplicitName(), 0);
                 File.WriteAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName), "");
@@ -84,6 +85,8 @@ namespace DFSServer.Services
                 FileTree.AddFile(directory, file);
 
                 FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
+
+                FileTree.AddInLocalFiles(file);
 
                 response.Message = "Successfully Created";
             }
@@ -197,6 +200,43 @@ namespace DFSServer.Services
                     response.Message = "Successfully updated";
                     file.Size = data.Length;
                     FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
+
+                    var servers = ServerList.GetServers();
+                    if (servers.Count > 0)
+                    {
+                        Request request = new Request();
+                        if (file.IPAddresses.Count < 2)
+                        {
+                            request.Type = "FileService";
+                            request.Method = "Replicate";
+                            request.Parameters = new object[] { data, file };
+                            int index = new Random().Next(servers.Count);
+                            ServerCommunication.Send(servers[index], request.SerializeToByteArray());
+                            file.IPAddresses.Add(ServerList.GetServerList()
+                                .FirstOrDefault(x => x.Socket.Equals(servers[index])).IPPort);
+                            FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
+                        }
+                        else
+                        {
+                            request.Command = Command.updateFile;
+                            request.Method = "UpdateFile";
+                            request.Type = "FileService";
+                            request.Parameters = new object[] { path, data };
+                            foreach(var ip in file.IPAddresses)
+                            {
+                                var s = ServerList.GetServerList().FirstOrDefault(x => x.IPPort.Equals(ip));
+                                if (s != null)
+                                {
+                                    ServerCommunication.Send(s.Socket, request.SerializeToByteArray());
+                                }
+                                
+                            }
+                        }
+                        
+                        
+
+                    }
+                    
                 }
                 else
                 {
@@ -222,6 +262,18 @@ namespace DFSServer.Services
                     }
                 }
             }
+            return response;
+        }
+
+        public static Response Replicate(string data, FileNode file)
+        {
+            var response = ResponseFormation.GetResponse();
+            File.WriteAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName), data);
+
+            FileTree.AddInLocalFiles(file);
+            response.IsSuccess = true;
+            response.Message = "Successfully replicated";
+
             return response;
         }
 

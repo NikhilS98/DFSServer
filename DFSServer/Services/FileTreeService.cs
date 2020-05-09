@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace DFSServer.Services
+namespace DFSServer.Communication
 {
     public static class FileTreeService
     {

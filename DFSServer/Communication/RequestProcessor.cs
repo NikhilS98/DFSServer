@@ -1,5 +1,5 @@
 ﻿using DFSServer.Connections;
-using DFSServer.Services;
+using DFSServer.Communication;
 using DFSUtility;
 using System;
 using System.Collections.Generic;
@@ -65,6 +65,7 @@ namespace DFSServer.Communication
                     }
                     response = ServerResponseList.Remove(queueItem.Request.Guid);
                 }
+
                 response.Request = queueItem.Request;
 
                 buffer = response.SerializeToByteArray();

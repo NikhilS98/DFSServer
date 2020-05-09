@@ -11,7 +11,7 @@ using System.Net;
 using System.Threading.Tasks;
 using DFSServer.Communication;
 
-namespace DFSServer.Services
+namespace DFSServer.Communication
 {
     public static class ServerCommunication
     {
@@ -95,6 +95,18 @@ namespace DFSServer.Services
             }
         }
 
+        public static void Send(Socket socket, byte[] buffer)
+        {
+            try
+            {
+                Network.Send(socket, buffer);
+            }
+            catch (Exception)
+            {
+
+            }
+        }
+
         private static void ListenServer(Socket server)
         {
             while (true)
@@ -107,7 +119,12 @@ namespace DFSServer.Services
                 catch (Exception e)
                 {
                     Console.WriteLine($"server {server.RemoteEndPoint.ToString()} disconnected: {e.Message}");
-                    ServerList.Remove(server);
+                    var item = ServerList.Remove(server);
+                    var ips = File.ReadAllLines(CommonFilePaths.ConfigFile);
+                    var toRemove = ips.FirstOrDefault(x => x.Equals(item.IPPort));
+                    var list = ips.ToList();
+                    list.Remove(toRemove);
+                    File.WriteAllLines(CommonFilePaths.ConfigFile, list);
                     break;
                 }
 

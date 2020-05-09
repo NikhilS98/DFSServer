@@ -1,6 +1,8 @@
-﻿using DFSUtility;
+﻿using DFSServer.Helpers;
+using DFSUtility;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace DFSServer.Communication
@@ -18,7 +20,13 @@ namespace DFSServer.Communication
                 var rootDirNode = response.Bytes.Deserialize<DirectoryNode>();
                 FileTree.SetRootDirectory(rootDirNode);
             }
-
+            else
+            {
+                if(response.Message != null)
+                {
+                    Console.WriteLine(response.Message);
+                }
+            }
         }
     }
 }
