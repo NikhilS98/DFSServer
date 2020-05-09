@@ -23,7 +23,8 @@ namespace DFSServer
             RequestListener listener = new RequestListener();
             listener.Listen(100);
 
-            //File.WriteAllText(rootDir + "\\config.txt", "192.168.0.105:11000\n");
+            if(!File.Exists(CommonFilePaths.ConfigFile))
+                File.WriteAllText(CommonFilePaths.ConfigFile, "192.168.0.105:11000\n");
             //CommonFilePaths.ConfigFile = rootDir + "\\config.txt";
 
             FileTree.ReadFromFile();
