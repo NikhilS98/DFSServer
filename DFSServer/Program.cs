@@ -24,30 +24,46 @@ namespace DFSServer
             listener.Listen(100);
 
             if(!File.Exists(CommonFilePaths.ConfigFile))
-                File.WriteAllText(CommonFilePaths.ConfigFile, "192.168.0.105:11000\n");
+                File.WriteAllText(CommonFilePaths.ConfigFile, "192.168.99.1:11000\n");
             //CommonFilePaths.ConfigFile = rootDir + "\\config.txt";
 
             FileTree.ReadFromFile();
 
             var ips = File.ReadAllLines(CommonFilePaths.ConfigFile);
-            var ip = ips.FirstOrDefault(x => !x.Equals(State.LocalEndPoint.ToString()));
-            if (ip != null)
+            if (ips != null)
             {
-                //Establishing connection with all the servers in system
-                string[] ipList = ServerCommunication.Connect(ip);
-                File.WriteAllLines(CommonFilePaths.ConfigFile, ipList);
-                foreach (var item in ipList)
+                foreach (var ip in ips)
                 {
-                    if (!item.Equals(State.LocalEndPoint.ToString()) && !item.Equals(ip))
-                        ServerCommunication.Connect(item);
-                }
-                var servers = ServerList.GetServers();
+                    if (!string.IsNullOrEmpty(ip) && !ip.Equals(State.LocalEndPoint.ToString()))
+                    {
+                        try
+                        {
+                            //Establishing connection with all the servers in system
+                            string[] ipList = ServerCommunication.Connect(ip);
+                            File.WriteAllLines(CommonFilePaths.ConfigFile, ipList);
+                            foreach (var item in ipList)
+                            {
+                                if (!item.Equals(State.LocalEndPoint.ToString()) && !item.Equals(ip))
+                                    ServerCommunication.Connect(item);
+                            }
+                            var servers = ServerList.GetServers();
 
-                //Sending request for filetree on startup
-                if (servers != null)
-                {
-                    var r = new Request { Command = Command.requestFileTree };
-                    Network.Send(servers[0], r.SerializeToByteArray());
+                            //Sending request for filetree on startup
+                            if (servers != null)
+                            {
+                                var r = new Request { Command = Command.requestFileTree };
+                                Network.Send(servers[0], r.SerializeToByteArray());
+                            }
+                            break;
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine($"{ip} not available");
+                            var list = ips.ToList();
+                            list.Remove(ip);
+                            File.WriteAllLines(CommonFilePaths.ConfigFile, list);
+                        }
+                    }
                 }
             }
 
