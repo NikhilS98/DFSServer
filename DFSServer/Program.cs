@@ -24,17 +24,18 @@ namespace DFSServer
             Console.Write("Total Space: ");
             State.LocalTotalSpace = 20000000;
 
-            //Console.Write("Port: ");
-            //string port = Console.ReadLine();
-
             RequestListener listener = new RequestListener();
             listener.Listen(100);
+
+            File.WriteAllText(rootDir + "\\config.txt", "192.168.0.105:11000\n");
+            CommonFilePaths.ConfigFile = rootDir + "\\config.txt";
 
             var ips = File.ReadAllLines(CommonFilePaths.ConfigFile);
             var ip = ips.FirstOrDefault(x => !x.Equals(State.LocalEndPoint.ToString()));
             if (ip != null)
             {
-                List<string> ipList = ServerCommunication.Connect(ip);
+                //Establishing connection with all the servers in system
+                string[] ipList = ServerCommunication.Connect(ip);
                 File.WriteAllLines(CommonFilePaths.ConfigFile, ipList);
                 foreach (var item in ipList)
                 {
@@ -42,10 +43,12 @@ namespace DFSServer
                         ServerCommunication.Connect(item);
                 }
                 var servers = ServerList.GetServers();
+
+                //Sending request for filetree on startup
                 if (servers != null)
                 {
                     var r = new Request { Command = Command.requestFileTree };
-                    Network.SendRequest(servers[0], r.SerializeToByteArray());
+                    Network.Send(servers[0], r.SerializeToByteArray());
                 }
             }
 

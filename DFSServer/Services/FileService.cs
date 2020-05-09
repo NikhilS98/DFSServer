@@ -37,6 +37,7 @@ namespace DFSServer.Services
                 {
                     // send request to remote server
                     response.Message = "Forwarded";
+                    response.Command = Command.forwarded;
                     response.IsSuccess = true;
                 }
             }
@@ -49,16 +50,28 @@ namespace DFSServer.Services
             var response = ResponseFormation.GetResponse();
 
             // evaluate where to create it
+            bool createLocally = true;
 
-            //if create locally
-            FileNode file = new FileNode(filename, FileTree.GetNewImplicitName());
-            File.WriteAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName), "");
-            file.IPEndPointString.Add(State.LocalEndPoint.ToString());
-            FileTree.AddFile(directory, file);
+            if (createLocally)
+            {
+                FileNode file = new FileNode(filename, FileTree.GetNewImplicitName());
+                File.WriteAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName), "");
+                file.IPEndPointString.Add(State.LocalEndPoint.ToString());
+                FileTree.AddFile(directory, file);
+
+                FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
+
+                response.Message = "Successfully Created";
+            }
+            else
+            {
+                //forward code
+                response.Message = "Forwarded";
+                response.Command = Command.forwarded;
+            }
 
             response.IsSuccess = true;
-            response.Message = "Successfully Created";
-                
+            
             return response;
         }
 
@@ -84,12 +97,14 @@ namespace DFSServer.Services
                     FileTree.RemoveFile(directory, file);
                     response.IsSuccess = true;
                     response.Message = "Succesfully Deleted";
+                    FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
                 }
                 else
                 {
                     // send request to remote server
                     response.IsSuccess = true;
                     response.Message = "Forwarded";
+                    response.Command = Command.forwarded;
                 }
             }
             return response;
@@ -126,6 +141,7 @@ namespace DFSServer.Services
                         file.Name = newFilename;
                         response.IsSuccess = true;
                         response.Message = "Successfully Moved";
+                        FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
                     }
                 }
             }
@@ -154,12 +170,14 @@ namespace DFSServer.Services
                     File.WriteAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName), data);
                     response.IsSuccess = true;
                     response.Message = "Successfully updated";
+                    FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
                 }
                 else
                 {
                     // send request to remote server
                     response.Message = "Forwarded";
                     response.IsSuccess = true;
+                    response.Command = Command.forwarded;
                 }
             }
             return response;

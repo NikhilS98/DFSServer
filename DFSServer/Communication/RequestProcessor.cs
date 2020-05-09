@@ -19,22 +19,14 @@ namespace DFSServer.Communication
                 {
                     byte[] buffer = null;
 
-                    if (request.Request.Command == Command.serverConnect)
-                    {
-                        var ips = ServerCommunication.AcceptConnection(request.Request, request.Client);
-                        if (ips == null)
-                            buffer = Encoding.UTF8.GetBytes("Rejected");
-                        else
-                            buffer = ips.SerializeToByteArray();
-                    }
-                    else if(request.Request.Command == Command.requestFileTree)
+                    if(request.Request.Command == Command.requestFileTree)
                     {
                         var rootDirNode = FileTree.GetRootDirectory();
                         var response = new Response
                         {
                             Bytes = rootDirNode.SerializeToByteArray(),
                             IsSuccess = true,
-                            Request = request.Request,
+                            Command = Command.updateFileTree
                         };
                         buffer = response.SerializeToByteArray();
                     }
@@ -57,7 +49,7 @@ namespace DFSServer.Communication
 
                     //Thread.Sleep(2000);
                     //Console.WriteLine($"size of response: {buffer.Length}");
-                    Network.SendRequest(request.Client, buffer);
+                    Network.Send(request.Client, buffer);
                 }
             }
         }

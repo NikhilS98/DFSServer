@@ -44,14 +44,10 @@ namespace DFSServer.Connections
 
         public static List<Socket> GetServers()
         {
-            List<Socket> sockets = null;
-            if (GetCount() > 0)
+            List<Socket> sockets = new List<Socket>();
+            foreach (var item in servers)
             {
-                sockets = new List<Socket>();
-                foreach (var item in servers)
-                {
-                    sockets.Add(item.Value);
-                }
+                sockets.Add(item.Value);
             }
             return sockets;
         }

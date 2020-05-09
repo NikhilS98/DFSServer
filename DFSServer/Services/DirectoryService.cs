@@ -48,6 +48,7 @@ namespace DFSServer.Services
                     FileTree.AddDirectory(parent, directory);
                     response.IsSuccess = true;
                     response.Message = "Directory created successfully";
+                    FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
                 }
             }
 
@@ -71,6 +72,7 @@ namespace DFSServer.Services
                 RemoveFilesByDirectory(directory);
                 response.IsSuccess = true;
                 response.Message = "Directory removed successfully";
+                FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
 
                 //else forward
             }
@@ -98,6 +100,7 @@ namespace DFSServer.Services
 
                     response.IsSuccess = true;
                     response.Message = "Directory moved successfully";
+                    FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
                 }
             }
 

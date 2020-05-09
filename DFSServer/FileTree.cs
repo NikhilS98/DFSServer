@@ -66,8 +66,8 @@ namespace DFSServer
 
         public static string GetNewImplicitName()
         {
-            //some checking or something
-            return (Id++) + "";
+            //some checking or something. Perhaps use Guid
+            return Guid.NewGuid().ToString();
         }
 
       

@@ -9,7 +9,7 @@ namespace DFSServer.Communication
     {
         public static void Parse(Response response)
         {
-            if(response.Request != null && response.Request.Command == Command.requestFileTree)
+            if(response.Command == Command.updateFileTree)
             {
                 var rootDirNode = response.Bytes.Deserialize<DirectoryNode>();
                 FileTree.SetRootDirectory(rootDirNode);

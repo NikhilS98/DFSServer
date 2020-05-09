@@ -15,15 +15,13 @@ namespace DFSServer.Services
 {
     public static class ServerCommunication
     {
-        public static List<string> Connect(string ip)
+        public static string[] Connect(string ip)
         {
             Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             try
             {
                 server.Connect(ip.Substring(0, ip.IndexOf(":")),
                     Convert.ToInt32(ip.Substring(ip.IndexOf(":") + 1)));
-
-                var buff = Network.ReceiveResponse(server, 10000);
 
                 //server will check whether the request is secretKey
                 Request request = new Request
@@ -33,10 +31,10 @@ namespace DFSServer.Services
                         State.LocalEndPoint.Port + ""}
                 };
 
-                Network.SendRequest(server, request.SerializeToByteArray());
-                buff = Network.ReceiveResponse(server, 1000000);
+                Network.Send(server, request.SerializeToByteArray());
+                var buff = Network.Receive(server, 100000);
 
-                var ipList = buff.Deserialize<List<string>>();
+                var ipList = buff.Deserialize<string[]>();
 
                 ServerList.Add(server);
                 Task.Run(() => ListenServer(server));
@@ -61,7 +59,7 @@ namespace DFSServer.Services
             return null;
         }
 
-        public static List<string> AcceptConnection(Request request, Socket socket)
+        public static void AcceptConnection(Request request, Socket socket)
         {
             object[] parameters = request.Parameters;
             string secret = (string) parameters[0];
@@ -74,29 +72,63 @@ namespace DFSServer.Services
                 int port = Convert.ToInt32((string)parameters[2]);
                 string ip = ((IPEndPoint)socket.RemoteEndPoint).Address.ToString();
 
-                File.AppendAllText(CommonFilePaths.ConfigFile, "\n" + ip + ":" + port);
+                File.AppendAllText(CommonFilePaths.ConfigFile, ip + ":" + port);
                 var ips = File.ReadAllLines(CommonFilePaths.ConfigFile);
 
-                ClientList.Remove(socket.RemoteEndPoint);
                 ServerList.Add(socket);
 
+                var buffer = ips.SerializeToByteArray();
+                Network.Send(socket, buffer);
+
                 Task.Run(() => ListenServer(socket));
-
-                return ips.ToList();
             }
+            else
+            {
+                Console.WriteLine($"{socket.RemoteEndPoint.ToString()} secret key did not match");
+                socket.Shutdown(SocketShutdown.Both);
+                socket.Close();
+            }
+        }
 
-            return null;             
+        public static void Broadcast(byte[] buffer)
+        {
+            foreach (var server in ServerList.GetServers())
+            {
+                Network.Send(server, buffer);
+            }
         }
 
         private static void ListenServer(Socket server)
         {
             while (true)
             {
-                var bytes = Network.ReceiveResponse(server, 100000);
+                try
+                {
+                    var bytes = Network.Receive(server, 100000);
 
-                //What to do with this lets see
-                var response = bytes.Deserialize<Response>();
-                ResponseParser.Parse(response);
+                    //What to do with this lets see
+                    Response response = null;
+                    Request request = null;
+                    try
+                    {
+                        request = bytes.Deserialize<Request>();
+                    }
+                    catch (Exception)
+                    {
+                        response = bytes.Deserialize<Response>();
+                    }
+
+                    if (request != null)
+                        MessageQueue.Enqueue(new MessageQueueItem { Client = server, Request = request });
+                    else
+                        ResponseParser.Parse(response);
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine($"server {server.RemoteEndPoint.ToString()} disconnected: {e.Message}");
+                    ServerList.Remove(server.RemoteEndPoint);
+                    break;
+                }
             }
         }
     }

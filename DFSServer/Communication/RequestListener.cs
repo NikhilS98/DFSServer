@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using DFSUtility;
 using System.Linq;
 using DFSServer.Connections;
+using DFSServer.Services;
 
 namespace DFSServer.Communication
 {
@@ -47,10 +48,25 @@ namespace DFSServer.Communication
         public void Accept()
         {
             Socket client = listener.Accept();
-            client.Send(Encoding.UTF8.GetBytes("root/"));
-            ClientList.Add(client);
-            Console.WriteLine(client.RemoteEndPoint.ToString());
-            Task.Run(() => ListenRequest(client));
+
+            var buff = Network.Receive(client, 10000);
+            var request = buff.Deserialize<Request>();
+
+            if (request.Command == Command.clientConnect)
+            {
+                Network.Send(client, Encoding.UTF8.GetBytes("Connected"));
+                ClientList.Add(client);
+                Task.Run(() => ListenRequest(client));
+            }
+            else if (request.Command == Command.serverConnect)
+            {
+                ServerCommunication.AcceptConnection(request, client);
+            }
+            else
+            {
+                client.Shutdown(SocketShutdown.Both);
+                client.Close();
+            }
         }
 
         private void ListenRequest(Socket client)
@@ -60,10 +76,10 @@ namespace DFSServer.Communication
                 Console.WriteLine("Listening on client " + client.RemoteEndPoint);
                 try
                 {
-                    var bytes = Network.ReceiveResponse(client, 100000);
+                    var bytes = Network.Receive(client, 100000);
                     var request = bytes.Deserialize<Request>();
 
-                    AddRequestInQueue(client, request);
+                    MessageQueue.Enqueue(new MessageQueueItem { Client = client, Request = request });
                 }
                 catch (Exception e)
                 {
@@ -72,16 +88,6 @@ namespace DFSServer.Communication
                     break;
                 }
             }
-        }
-
-        private void AddRequestInQueue(Socket client, Request request)
-        {
-            var requestItem = new MessageQueueItem
-            {
-                Client = client,
-                Request = request
-            };
-            MessageQueue.Enqueue(requestItem);
         }
 
         private bool IsPortOccupied(int port)
