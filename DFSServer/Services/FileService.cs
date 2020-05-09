@@ -5,6 +5,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Linq;
+using DFSServer.Connections;
+using System.Net;
+using System.Net.Sockets;
 
 namespace DFSServer.Services
 {
@@ -27,7 +30,7 @@ namespace DFSServer.Services
                 var file = FileTree.GetFile(directory, filename);
                 if (file == null)
                     return CreateFile(directory, filename);
-                else if (file.IPEndPointString.Exists(x => x.Equals(State.LocalEndPoint.ToString())))
+                else if (file.IPAddresses.Exists(x => x.Equals(State.LocalEndPoint.ToString())))
                 {
                     string text = File.ReadAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName));
                     response.IsSuccess = true;
@@ -36,9 +39,25 @@ namespace DFSServer.Services
                 else
                 {
                     // send request to remote server
-                    response.Message = "Forwarded";
-                    response.Command = Command.forwarded;
-                    response.IsSuccess = true;
+                    bool exists = false;
+                    foreach (var ipPort in ServerList.GetIPPorts())
+                    {
+                        exists = file.IPAddresses.Exists(x => x.Equals(ipPort));
+                        if (exists)
+                        {
+                            response.Command = Command.forwarded;
+                            response.Message = ipPort;
+                            response.IsSuccess = true;
+                            break;
+                        }
+                        
+                    }
+
+                    if (!exists)
+                    {
+                        response.Message = string.Format(ResponseMessages.FileNotFound, filename, dirPath);
+                    }
+                    
                 }
             }
             return response;
@@ -49,14 +68,19 @@ namespace DFSServer.Services
         {
             var response = ResponseFormation.GetResponse();
 
-            // evaluate where to create it
-            bool createLocally = true;
+            //query filetree to find out which server has least storage occupied
+            var ipSpacePairs = FileTree.GetIPSpacePairs();
+            string ipPort = null;
+            if (ipSpacePairs.Count == 0)
+                ipPort = State.LocalEndPoint.ToString();
+            else
+                ipPort = ipSpacePairs.OrderBy(x => x.Value).First().Key;
 
-            if (createLocally)
+            if (State.LocalEndPoint.ToString().Equals(ipPort))
             {
-                FileNode file = new FileNode(filename, FileTree.GetNewImplicitName());
+                FileNode file = new FileNode(filename, FileTree.GetNewImplicitName(), 0);
                 File.WriteAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName), "");
-                file.IPEndPointString.Add(State.LocalEndPoint.ToString());
+                file.IPAddresses.Add(State.LocalEndPoint.ToString());
                 FileTree.AddFile(directory, file);
 
                 FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
@@ -65,9 +89,9 @@ namespace DFSServer.Services
             }
             else
             {
-                //forward code
-                response.Message = "Forwarded";
+                //forward
                 response.Command = Command.forwarded;
+                response.Message = ipPort;
             }
 
             response.IsSuccess = true;
@@ -91,7 +115,7 @@ namespace DFSServer.Services
                 var file = FileTree.GetFile(directory, filename);
                 if (file == null)
                     response.Message = string.Format(ResponseMessages.FileNotFound, filename, dirPath);
-                else if (file.IPEndPointString.Exists(x => x.Equals(State.LocalEndPoint.ToString())))
+                else if (file.IPAddresses.Exists(x => x.Equals(State.LocalEndPoint.ToString())))
                 {
                     RemoveFileFromDisk(file.ImplicitName);
                     FileTree.RemoveFile(directory, file);
@@ -163,21 +187,39 @@ namespace DFSServer.Services
             else
             {
                 var file = FileTree.GetFile(directory, filename);
+                var str = State.LocalEndPoint.ToString();
                 if (file == null)
                     response.Message = string.Format(ResponseMessages.FileNotFound, filename, dirPath);
-                else if (file.IPEndPointString.Exists(x => x.Equals(State.LocalEndPoint.ToString())))
+                else if (file.IPAddresses.Exists(x => x.Equals(State.LocalEndPoint.ToString())))
                 {
                     File.WriteAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName), data);
                     response.IsSuccess = true;
                     response.Message = "Successfully updated";
+                    file.Size = data.Length;
                     FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
                 }
                 else
                 {
-                    // send request to remote server
-                    response.Message = "Forwarded";
-                    response.IsSuccess = true;
-                    response.Command = Command.forwarded;
+                    string ip = null;
+                    foreach (var ipPort in ServerList.GetIPPorts())
+                    {
+                        if(file.IPAddresses.Exists(x => x.Equals(ipPort)))
+                        {
+                            ip = ipPort;
+                            break;
+                        }
+                    }
+                    if (ip == null)
+                    {
+                        response.Message = string.Format(ResponseMessages.FileNotFound, filename, dirPath);
+                    }
+                    else
+                    {
+                        // send request to remote server
+                        response.Message = ip;
+                        response.IsSuccess = true;
+                        response.Command = Command.forwarded;
+                    }
                 }
             }
             return response;

@@ -11,12 +11,24 @@ namespace DFSServer
     {
         private static DirectoryInfo rootDirectory;
         public static IPEndPoint LocalEndPoint { get; set; }
-        public static int LocalTotalSpace { get; set; }
         public static Socket Listener { get; set; }
-        public static int GlobalTotalSpace {get;set;}
 
-        private static int localOccupiedSpace;
         private static readonly object updateSpaceLock = new object();
+        private static long localOccupiedSpace;
+        public static long LocalOccupiedSpace
+        {
+            get
+            {
+                return localOccupiedSpace;
+            }
+            set
+            {
+                lock (updateSpaceLock)
+                {
+                    localOccupiedSpace = value;
+                }
+            }
+        }
         
         public static DirectoryInfo GetRootDirectory()
         {
@@ -28,20 +40,5 @@ namespace DFSServer
             rootDirectory = Directory.CreateDirectory(path);
         }
 
-        public static bool UpdateOccupiedSpace(int space)
-        {
-            if (space > LocalTotalSpace || space < 0)
-                return false;
-            lock (updateSpaceLock)
-            {
-                localOccupiedSpace = space;
-            }
-            return true;
-        }
-
-        public static int GetOccupiedSpace()
-        {
-            return localOccupiedSpace;
-        }
     }
 }

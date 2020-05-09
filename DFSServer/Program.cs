@@ -21,9 +21,6 @@ namespace DFSServer
             //string rootDir = "D:\\server1";
             State.SetRootDirectory(rootDir);
 
-            Console.Write("Total Space: ");
-            State.LocalTotalSpace = 20000000;
-
             RequestListener listener = new RequestListener();
             listener.Listen(100);
 
@@ -53,7 +50,7 @@ namespace DFSServer
             }
 
             Task requestAcceptor = Task.Run(() => AcceptRequest(listener));
-            Task requestProcessor = Task.Run(() => RequestProcessor.ProcessRequestFromQueue());
+            Task requestProcessor = Task.Run(() => RequestProcessor.DequeueRequestFromQueue());
             Task.WaitAll(new Task[] { requestAcceptor, requestProcessor });
         }
 

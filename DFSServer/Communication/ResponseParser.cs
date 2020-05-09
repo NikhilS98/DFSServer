@@ -9,11 +9,16 @@ namespace DFSServer.Communication
     {
         public static void Parse(Response response)
         {
-            if(response.Command == Command.updateFileTree)
+            if(response.Request != null && response.Request.Guid != null)
+            {
+                ServerResponseList.Add(response.Request.Guid, response);
+            }
+            else if(response.Command == Command.updateFileTree)
             {
                 var rootDirNode = response.Bytes.Deserialize<DirectoryNode>();
                 FileTree.SetRootDirectory(rootDirNode);
             }
+
         }
     }
 }

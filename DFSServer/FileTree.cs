@@ -4,6 +4,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Linq;
+using DFSServer.Connections;
+using System.IO;
 
 namespace DFSServer
 {
@@ -67,9 +69,54 @@ namespace DFSServer
         public static string GetNewImplicitName()
         {
             //some checking or something. Perhaps use Guid
-            return Guid.NewGuid().ToString();
+            string name = null;
+            do {
+                name = Guid.NewGuid().ToString();
+            }
+            while(File.Exists(Path.Combine(State.GetRootDirectory().FullName, name)));
+            return name;
         }
 
-      
+        /// <summary>
+        /// Returns an empty dictionary if not found. Never null
+        /// </summary>
+        /// <returns></returns>
+        public static Dictionary<string, long> GetIPSpacePairs()
+        {
+            Dictionary<string, long> ipSpaces = new Dictionary<string, long>();
+
+            Queue<DirectoryNode> directoryNodes = new Queue<DirectoryNode>();
+
+            directoryNodes.Enqueue(RootDirectory);
+            var ipPorts = ServerList.GetIPPorts();
+            if (ipPorts.Count == 0)
+                return ipSpaces;
+
+            while(directoryNodes.Count > 0)
+            {
+                var dirNode = directoryNodes.Dequeue();
+                foreach (var file in dirNode.Files)
+                {
+                    foreach (var ip in file.IPAddresses)
+                    {
+                        if (ipPorts.Exists(x => x.Equals(ip)))
+                        {
+                            if (ipSpaces.ContainsKey(ip))
+                            {
+                                ipSpaces[ip] += file.Size;
+                            }
+                            else
+                                ipSpaces.Add(ip, file.Size);
+                        }
+                    }
+                }
+                foreach (var dir in dirNode.Directories)
+                {
+                    directoryNodes.Enqueue(dir);
+                }
+            }
+
+            return ipSpaces;
+        }
     }
 }

@@ -27,7 +27,7 @@ namespace DFSServer.Services
                 Request request = new Request
                 {
                     Command = Command.serverConnect,
-                    Parameters = new object[] { Secret.SecretKey, State.LocalTotalSpace + "",
+                    Parameters = new object[] { Secret.SecretKey,
                         State.LocalEndPoint.Port + ""}
                 };
 
@@ -36,7 +36,7 @@ namespace DFSServer.Services
 
                 var ipList = buff.Deserialize<string[]>();
 
-                ServerList.Add(server);
+                ServerList.Add(server, ip);
                 Task.Run(() => ListenServer(server));
 
                 return ipList;
@@ -62,20 +62,17 @@ namespace DFSServer.Services
         public static void AcceptConnection(Request request, Socket socket)
         {
             object[] parameters = request.Parameters;
-            string secret = (string) parameters[0];
+            string secret = (string)parameters[0];
             if (secret.Equals(Secret.SecretKey))
             {
-                int remoteLocalSpace = Convert.ToInt32((string)parameters[1]);
-                State.GlobalTotalSpace += remoteLocalSpace;
-
                 //make a list ips of connected server from serveList
-                int port = Convert.ToInt32((string)parameters[2]);
+                int port = Convert.ToInt32((string)parameters[1]);
                 string ip = ((IPEndPoint)socket.RemoteEndPoint).Address.ToString();
 
                 File.AppendAllText(CommonFilePaths.ConfigFile, ip + ":" + port);
                 var ips = File.ReadAllLines(CommonFilePaths.ConfigFile);
 
-                ServerList.Add(socket);
+                ServerList.Add(socket, ip + ":" + port);
 
                 var buffer = ips.SerializeToByteArray();
                 Network.Send(socket, buffer);
@@ -102,32 +99,30 @@ namespace DFSServer.Services
         {
             while (true)
             {
+                byte[] buff = null;
                 try
                 {
-                    var bytes = Network.Receive(server, 100000);
-
-                    //What to do with this lets see
-                    Response response = null;
-                    Request request = null;
-                    try
-                    {
-                        request = bytes.Deserialize<Request>();
-                    }
-                    catch (Exception)
-                    {
-                        response = bytes.Deserialize<Response>();
-                    }
-
-                    if (request != null)
-                        MessageQueue.Enqueue(new MessageQueueItem { Client = server, Request = request });
-                    else
-                        ResponseParser.Parse(response);
+                    buff = Network.Receive(server, 100000);
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     Console.WriteLine($"server {server.RemoteEndPoint.ToString()} disconnected: {e.Message}");
-                    ServerList.Remove(server.RemoteEndPoint);
+                    ServerList.Remove(server);
                     break;
+                }
+
+                //What to do with this lets see
+                Response response = null;
+                Request request = null;
+                try
+                {
+                    request = buff.Deserialize<Request>();
+                    MessageQueue.Enqueue(new MessageQueueItem { Client = server, Request = request });
+                }
+                catch (Exception e)
+                {
+                    response = buff.Deserialize<Response>();
+                    ResponseParser.Parse(response);
                 }
             }
         }
