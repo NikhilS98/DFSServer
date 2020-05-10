@@ -40,7 +40,7 @@ namespace DFSServer
                         try
                         {
                             //Establishing connection with all the servers in system
-                            string[] ipList = ServerCommunication.Connect(ip);
+                            var ipList = ServerCommunication.Connect(ip);
                             ConfigurationHelper.Update(CommonFilePaths.ConfigFile, ipList);
                             Console.WriteLine($"Connected to server {ip}");
                             foreach (var item in ipList)

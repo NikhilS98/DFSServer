@@ -23,9 +23,9 @@ namespace DFSServer.Communication
         public RequestListener()
         {
             var ipHostEntry = Dns.GetHostEntry(Dns.GetHostName());
-            //ipAddress = ipHostEntry.AddressList
-            //    .FirstOrDefault(x => x.AddressFamily == AddressFamily.InterNetwork);
-            ipAddress = IPAddress.Parse("192.168.0.105");
+            ipAddress = ipHostEntry.AddressList
+                .LastOrDefault(x => x.AddressFamily == AddressFamily.InterNetwork);
+            //ipAddress = IPAddress.Parse("192.168.0.105");
             int port = 11000;
             while (IsPortOccupied(port))
                 port++;

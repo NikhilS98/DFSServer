@@ -15,7 +15,7 @@ namespace DFSServer.Communication
 {
     public static class ServerCommunication
     {
-        public static string[] Connect(string ip)
+        public static List<string> Connect(string ip)
         {
             Socket server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             try
@@ -34,7 +34,7 @@ namespace DFSServer.Communication
                 Network.Send(server, request.SerializeToByteArray());
                 var buff = Network.Receive(server, 100000);
 
-                var ipList = buff.Deserialize<string[]>();
+                var ipList = buff.Deserialize<List<string>>();
 
                 ServerList.Add(server, ip);
                 Task.Run(() => ListenServer(server));
@@ -113,6 +113,7 @@ namespace DFSServer.Communication
         {
             Response r = new Response
             {
+                IsSuccess = true,
                 Command = Command.updateConfig,
                 Bytes = ips.SerializeToByteArray()
             };
