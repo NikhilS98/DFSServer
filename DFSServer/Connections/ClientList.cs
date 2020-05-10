@@ -36,5 +36,15 @@ namespace DFSServer.Connections
         {
             return GetCount() < Capacity;
         }
+
+        public static List<Socket> GetClientSockets()
+        {
+            List<Socket> sockets = new List<Socket>();
+            foreach (var item in clients)
+            {
+                sockets.Add(item.Value);
+            }
+            return sockets;
+        }
     }
 }

@@ -14,7 +14,7 @@ namespace DFSServer.Communication
                 Command = Command.updateFileTree,
                 Bytes = data
             };
-            ServerCommunication.Broadcast(response.SerializeToByteArray());
+            ServerCommunication.BroadcastToServers(response.SerializeToByteArray());
         }
     }
 }

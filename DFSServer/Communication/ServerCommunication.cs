@@ -69,13 +69,19 @@ namespace DFSServer.Communication
                 int port = Convert.ToInt32((string)parameters[1]);
                 string ip = ((IPEndPoint)socket.RemoteEndPoint).Address.ToString();
 
-                File.AppendAllText(CommonFilePaths.ConfigFile, ip + ":" + port);
-                var ips = File.ReadAllLines(CommonFilePaths.ConfigFile);
+                var ips = ConfigurationHelper.Read(CommonFilePaths.ConfigFile).ToList();
+                ips.Add(ip + ":" + port);
+                ConfigurationHelper.Update(CommonFilePaths.ConfigFile, ips);              
 
                 ServerList.Add(socket, ip + ":" + port);
 
                 var buffer = ips.SerializeToByteArray();
                 Network.Send(socket, buffer);
+
+                Console.WriteLine($"Connected to server {ip}:{port}");
+
+                //send config file to clients
+                BroadcastConfigChangeToClients(ips);
 
                 Task.Run(() => ListenServer(socket));
             }
@@ -87,12 +93,30 @@ namespace DFSServer.Communication
             }
         }
 
-        public static void Broadcast(byte[] buffer)
+        public static void BroadcastToServers(byte[] buffer)
         {
             foreach (var server in ServerList.GetServers())
             {
                 Network.Send(server, buffer);
             }
+        }
+
+        public static void BroadcastToClients(byte[] buffer)
+        {
+            foreach (var client in ClientList.GetClientSockets())
+            {
+                Network.Send(client, buffer);
+            }
+        }
+
+        public static void BroadcastConfigChangeToClients(IEnumerable<string> ips)
+        {
+            Response r = new Response
+            {
+                Command = Command.updateConfig,
+                Bytes = ips.SerializeToByteArray()
+            };
+            BroadcastToClients(r.SerializeToByteArray());
         }
 
         public static void Send(Socket socket, byte[] buffer)
@@ -120,11 +144,11 @@ namespace DFSServer.Communication
                 {
                     Console.WriteLine($"server {server.RemoteEndPoint.ToString()} disconnected: {e.Message}");
                     var item = ServerList.Remove(server);
-                    var ips = File.ReadAllLines(CommonFilePaths.ConfigFile);
+                    var ips = ConfigurationHelper.Read(CommonFilePaths.ConfigFile).ToList();
                     var toRemove = ips.FirstOrDefault(x => x.Equals(item.IPPort));
-                    var list = ips.ToList();
-                    list.Remove(toRemove);
-                    File.WriteAllLines(CommonFilePaths.ConfigFile, list);
+                    ips.Remove(toRemove);
+                    ConfigurationHelper.Update(CommonFilePaths.ConfigFile, ips);
+                    BroadcastConfigChangeToClients(ips);
                     break;
                 }
 

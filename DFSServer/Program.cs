@@ -18,18 +18,19 @@ namespace DFSServer
             //Console.Write("Select a root directory: ");
             //string rootDir = Console.ReadLine();
             string rootDir = "D:\\server";
+            //creates the dir if it doesn't exist
             State.SetRootDirectory(rootDir);
 
             RequestListener listener = new RequestListener();
             listener.Listen(100);
 
-            if(!File.Exists(CommonFilePaths.ConfigFile))
-                File.WriteAllText(CommonFilePaths.ConfigFile, "192.168.99.1:11000\n");
+            //if(!File.Exists(CommonFilePaths.ConfigFile))
+                //File.WriteAllText(CommonFilePaths.ConfigFile, "192.168.0.105:11000\n");
             //CommonFilePaths.ConfigFile = rootDir + "\\config.txt";
 
             FileTree.ReadFromFile();
 
-            var ips = File.ReadAllLines(CommonFilePaths.ConfigFile);
+            var ips = ConfigurationHelper.Read(CommonFilePaths.ConfigFile);
             if (ips != null)
             {
                 foreach (var ip in ips)
@@ -40,11 +41,15 @@ namespace DFSServer
                         {
                             //Establishing connection with all the servers in system
                             string[] ipList = ServerCommunication.Connect(ip);
-                            File.WriteAllLines(CommonFilePaths.ConfigFile, ipList);
+                            ConfigurationHelper.Update(CommonFilePaths.ConfigFile, ipList);
+                            Console.WriteLine($"Connected to server {ip}");
                             foreach (var item in ipList)
                             {
                                 if (!item.Equals(State.LocalEndPoint.ToString()) && !item.Equals(ip))
+                                {
                                     ServerCommunication.Connect(item);
+                                    Console.WriteLine($"Connected to server {item}");
+                                }
                             }
                             var servers = ServerList.GetServers();
 
@@ -58,10 +63,10 @@ namespace DFSServer
                         }
                         catch (Exception e)
                         {
-                            Console.WriteLine($"{ip} not available");
+                            Console.WriteLine($"Server {ip} not available");
                             var list = ips.ToList();
                             list.Remove(ip);
-                            File.WriteAllLines(CommonFilePaths.ConfigFile, list);
+                            ConfigurationHelper.Update(CommonFilePaths.ConfigFile, list);
                         }
                     }
                 }
@@ -69,7 +74,8 @@ namespace DFSServer
 
             Task requestAcceptor = Task.Run(() => AcceptRequest(listener));
             Task requestProcessor = Task.Run(() => RequestProcessor.DequeueRequestFromQueue());
-            Task.WaitAll(new Task[] { requestAcceptor, requestProcessor });
+            Task inputListener = Task.Run(() => InputListener());
+            Task.WaitAll(new Task[] { requestAcceptor, requestProcessor, inputListener});
         }
 
         static void AcceptRequest(RequestListener listener)
@@ -79,6 +85,26 @@ namespace DFSServer
                 Console.WriteLine("Waiting");
                 //this is blocking
                 listener.Accept();
+            }
+        }
+
+        static void InputListener()
+        {
+            while (true) 
+            {
+                string input = Console.ReadLine();
+                if (input.Equals("config"))
+                {
+                    var ips = ConfigurationHelper.Read(CommonFilePaths.ConfigFile).ToList();
+                    foreach (var ip in ips)
+                    {
+                        Console.WriteLine(ip);
+                    }
+                }
+                else if (input.Equals("exit"))
+                {
+                    Environment.Exit(0);
+                }
             }
         }
     }

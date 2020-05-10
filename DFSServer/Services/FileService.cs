@@ -199,9 +199,9 @@ namespace DFSServer.Communication
                     response.IsSuccess = true;
                     response.Message = "Successfully updated";
                     file.Size = data.Length;
-                    FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
 
                     var servers = ServerList.GetServers();
+                    bool isReplicated = false;
                     if (servers.Count > 0)
                     {
                         Request request = new Request();
@@ -211,10 +211,11 @@ namespace DFSServer.Communication
                             request.Method = "Replicate";
                             request.Parameters = new object[] { data, file };
                             int index = new Random().Next(servers.Count);
-                            ServerCommunication.Send(servers[index], request.SerializeToByteArray());
                             file.IPAddresses.Add(ServerList.GetServerList()
                                 .FirstOrDefault(x => x.Socket.Equals(servers[index])).IPPort);
+                            ServerCommunication.Send(servers[index], request.SerializeToByteArray());
                             FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
+                            isReplicated = true;
                         }
                         else
                         {
@@ -232,11 +233,13 @@ namespace DFSServer.Communication
                                 
                             }
                         }
-                        
-                        
 
+                        //response.Command = Command.wait;
                     }
-                    
+
+                    if(!isReplicated)
+                        FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
+
                 }
                 else
                 {
@@ -273,6 +276,8 @@ namespace DFSServer.Communication
             FileTree.AddInLocalFiles(file);
             response.IsSuccess = true;
             response.Message = "Successfully replicated";
+
+            Console.WriteLine($"{file.Name} replicated");
 
             return response;
         }
