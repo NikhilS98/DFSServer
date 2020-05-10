@@ -30,7 +30,8 @@ namespace DFSServer.Communication
                 var file = FileTree.GetFile(directory, filename);
                 if (file == null)
                     return CreateFile(directory, filename, false);
-                else if (file.IPAddresses.Exists(x => x.Equals(State.LocalEndPoint.ToString())))
+                else if (file.IPAddresses.Exists(x => x.Equals(State.LocalEndPoint.ToString())) && 
+                    File.Exists(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName)))
                 {
                     string text = File.ReadAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName));
                     response.IsSuccess = true;
