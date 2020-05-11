@@ -15,8 +15,8 @@ namespace DFSServer
     {
         private static readonly object updateRootDirLock = new object();
         private static DirectoryNode RootDirectory = new DirectoryNode("root");
-        private static List<FileNode> localFiles = new List<FileNode>();
-        private static readonly object updatelocalFilesLock = new object();
+        //private static List<FileNode> localFiles = new List<FileNode>();
+        //private static readonly object updatelocalFilesLock = new object();
 
         public static void SetRootDirectory(DirectoryNode directoryNode)
         {
@@ -29,7 +29,7 @@ namespace DFSServer
             return RootDirectory;
         }
 
-        public static void AddInLocalFiles(FileNode node)
+        /*public static void AddInLocalFiles(FileNode node)
         {
             lock (updatelocalFilesLock)
             {
@@ -43,7 +43,7 @@ namespace DFSServer
             {
                 localFiles.Remove(node);
             }
-        }
+        }*/
 
         public static FileNode GetFile(DirectoryNode directory, string filename)
         {

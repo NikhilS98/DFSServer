@@ -87,7 +87,7 @@ namespace DFSServer.Communication
 
                 FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
 
-                FileTree.AddInLocalFiles(file);
+                //FileTree.AddInLocalFiles(file);
 
                 response.Message = "Successfully Created";
             }
@@ -100,41 +100,6 @@ namespace DFSServer.Communication
 
             response.IsSuccess = true;
             
-            return response;
-        }
-
-        //working for relative and absolute
-        public static Response RemoveFile(string path)
-        {
-            var response = ResponseFormation.GetResponse();
-
-            string dirPath = PathHelpers.GetDirFromPath(path);
-            string filename = PathHelpers.GetFilenameFromPath(path);
-
-            var directory = FileTree.GetDirectory(dirPath);
-            if (directory == null)
-                response.Message = string.Format(ResponseMessages.DirectoryNotFound, dirPath);
-            else
-            {
-                var file = FileTree.GetFile(directory, filename);
-                if (file == null)
-                    response.Message = string.Format(ResponseMessages.FileNotFound, filename, dirPath);
-                else if (file.IPAddresses.Exists(x => x.Equals(State.LocalEndPoint.ToString())))
-                {
-                    RemoveFileFromDisk(file.ImplicitName);
-                    FileTree.RemoveFile(directory, file);
-                    response.IsSuccess = true;
-                    response.Message = "Succesfully Deleted";
-                    FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
-                }
-                else
-                {
-                    // send request to remote server
-                    response.IsSuccess = true;
-                    response.Message = "Forwarded";
-                    response.Command = Command.forwarded;
-                }
-            }
             return response;
         }
 
@@ -274,7 +239,7 @@ namespace DFSServer.Communication
             var response = ResponseFormation.GetResponse();
             File.WriteAllText(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName), data);
 
-            FileTree.AddInLocalFiles(file);
+            //FileTree.AddInLocalFiles(file);
             response.IsSuccess = true;
             response.Message = "Successfully replicated";
 
@@ -283,9 +248,66 @@ namespace DFSServer.Communication
             return response;
         }
 
-        public static void RemoveFileFromDisk(string implicitName)
+        //working for relative and absolute
+        public static Response RemoveFile(string path)
+        {
+            var response = ResponseFormation.GetResponse();
+
+            string dirPath = PathHelpers.GetDirFromPath(path);
+            string filename = PathHelpers.GetFilenameFromPath(path);
+
+            var directory = FileTree.GetDirectory(dirPath);
+            if (directory == null)
+                response.Message = string.Format(ResponseMessages.DirectoryNotFound, dirPath);
+            else
+            {
+                var file = FileTree.GetFile(directory, filename);
+                if (file == null)
+                    response.Message = string.Format(ResponseMessages.FileNotFound, filename, dirPath);
+                else if (file.IPAddresses.Exists(x => x.Equals(State.LocalEndPoint.ToString())) &&
+                    File.Exists(Path.Combine(State.GetRootDirectory().FullName, file.ImplicitName)))
+                {
+                    RemoveFileFromDisk(file.ImplicitName);
+                    FileTree.RemoveFile(directory, file);
+                    response.IsSuccess = true;
+                    response.Message = "Succesfully Deleted";
+                    FileTreeService.UpdateFileTree(FileTree.GetRootDirectory().SerializeToByteArray());
+
+                    if(file.IPAddresses.Count > 1)
+                    {
+                        var remoteIps = file.IPAddresses.Where(x => !x.Equals(State.LocalEndPoint.ToString())).ToList();
+                        if(remoteIps != null)
+                        {
+                            foreach (var ip in remoteIps)
+                            {
+                                var socket = ServerList.GetServerList()
+                                    .FirstOrDefault(x => x.IPPort.Equals(ip)).Socket;
+                                var request = new Request
+                                {
+                                    Type = "FileService",
+                                    Method = "RemoveFileFromDisk",
+                                    Parameters = new object[] { file.ImplicitName }
+                                };
+                                ServerCommunication.Send(socket, request.SerializeToByteArray());
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // send request to remote server
+                    response.IsSuccess = true;
+                    response.Message = "Forwarded";
+                    response.Command = Command.forwarded;
+                }
+            }
+            return response;
+        }
+
+        public static Response RemoveFileFromDisk(string implicitName)
         {
             File.Delete(Path.Combine(State.GetRootDirectory().FullName, implicitName));
+            return new Response();
         }
     }
 }
