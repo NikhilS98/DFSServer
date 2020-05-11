@@ -101,6 +101,19 @@ namespace DFSServer
                         Console.WriteLine(ip);
                     }
                 }
+                else if (input.Equals("files"))
+                {
+                    var filenames = Directory.GetFiles(State.GetRootDirectory().FullName);
+                    if (filenames != null)
+                    {
+                        foreach (var name in filenames)
+                        {
+                            Console.WriteLine(name);
+                        }
+                    }
+                    else
+                        Console.WriteLine("No files exist");
+                }
                 else if (input.Equals("exit"))
                 {
                     Environment.Exit(0);
